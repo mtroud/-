@@ -17,12 +17,12 @@ export interface MenuCategory {
 
 export const RESTAURANT_INFO = {
   name: "مطعم خيرات الوارث",
-  subtitle: "عليه السلام",
-  welcomeMessage: "أهلاً وسهلاً بكم في مطعم خيرات الوارث (عليه السلام)",
+  subtitle: "كربلاء المقدسة",
+  welcomeMessage: "أهلاً وسهلاً بكم في مطعم خيرات الوارث",
   slogan: "كل وجبة من خيرات الوارث تثمر في مشاريع العتبة الحسينية المقدسة",
   badgeText: "اطمئن",
   badgeDescription: "جميع اللحوم والمكونات خاضعة للرقابة الشرعية والصحية ومذبوحة على الطريقة الإسلامية",
-  workingHours: "من الساعة 12:00 ظهراً حتى الساعة 12:00 ليلاً",
+  workingHours: "من الساعة 11:00 صباحاً إلى 10:00 ليلاً",
   location: "العراق، كربلاء المقدسة",
   phone: "07800000000", // placeholder or general
 };

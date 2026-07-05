@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   Utensils, 
   Flame, 
@@ -68,6 +68,13 @@ export default function App() {
   const [showAssurance, setShowAssurance] = useState<boolean>(false);
   // Success toast for additions
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Table number state
+  const [tableNumber, setTableNumber] = useState<string>(() => localStorage.getItem("table_number") || "");
+
+  // Persist table number
+  useEffect(() => {
+    localStorage.setItem("table_number", tableNumber);
+  }, [tableNumber]);
 
   // Get active icon component
   const getCategoryIcon = (iconName: string, className = "w-5 h-5") => {
@@ -229,9 +236,9 @@ export default function App() {
             className="w-full h-full object-cover object-center scale-105 filter brightness-50 contrast-110"
             referrerPolicy="no-referrer"
           />
-          {/* Gradients to blend banner to black */}
-          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/60 to-neutral-900/30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/40 via-transparent to-transparent" />
+          {/* Gradients to blend banner to brand bg */}
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/60 to-brand-bg/30" />
+          <div className="absolute inset-0 bg-gradient-to-b from-brand-bg/40 via-transparent to-transparent" />
         </div>
 
         {/* Brand floating container */}
@@ -316,6 +323,39 @@ export default function App() {
               هذا الموقع مخصص لتصفح المنيو وحساب التكلفة التقديرية فقط. 
               <span className="font-bold text-brand-gold"> عند الانتهاء من اختيار وجباتك وتحديدها، يرجى التوجه مباشرة إلى الكاشير لتقديم طلبك وإتمام عملية الشراء.</span>
             </p>
+          </div>
+        </div>
+
+        {/* TABLE NUMBER SELECTION */}
+        <div className="mb-6 bg-brand-bg border border-brand-border rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-gold/10 text-brand-gold flex items-center justify-center border border-brand-gold/20 font-bold shrink-0">
+              #
+            </div>
+            <div className="text-right">
+              <h4 className="text-sm font-bold text-brand-text font-serif">رقم طاولة الجلوس</h4>
+              <p className="text-xs text-brand-muted">أدخل رقم طاولتك لتضمينه عند مشاركة وحساب الفاتورة</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <input 
+              type="text" 
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="مثال: 12"
+              value={tableNumber}
+              onChange={(e) => setTableNumber(e.target.value)}
+              className="w-full sm:w-32 bg-brand-bg text-brand-text font-sans font-bold px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/50 text-center text-base transition-all placeholder:text-brand-muted/50"
+            />
+            {tableNumber && (
+              <button 
+                onClick={() => setTableNumber("")}
+                className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all border border-transparent hover:border-rose-500/20 cursor-pointer text-xs shrink-0"
+                title="مسح رقم الطاولة"
+              >
+                مسح
+              </button>
+            )}
           </div>
         </div>
         
@@ -574,7 +614,7 @@ export default function App() {
                         <div key={item.id} className="group pb-4 border-b border-brand-border/40 last:border-0 last:pb-0">
                           
                           {/* Row 1: Name, Dotted Leader, Price */}
-                          <div className="flex items-baseline gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 justify-between">
                             <div className="flex items-center gap-2 shrink-0">
                               <button 
                                 onClick={(e) => toggleFavorite(item.id, e)}
@@ -588,12 +628,12 @@ export default function App() {
                             </div>
                             
                             {/* Dotted spacer leader */}
-                            <div className="flex-grow border-b border-dotted border-brand-border mx-2" />
+                            <div className="hidden sm:block flex-grow border-b border-dotted border-brand-border mx-2" />
                             
                             {/* Pricing area */}
-                            <div className="shrink-0 text-left font-sans">
+                            <div className="shrink-0 text-right sm:text-left font-sans mt-1 sm:mt-0">
                               {item.prices ? (
-                                <div className="flex flex-wrap gap-2 justify-end">
+                                <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
                                   {Object.entries(item.prices).map(([opt, pr]) => (
                                     <div key={opt} className="inline-flex items-center gap-1.5 bg-brand-bg px-2 py-1 rounded-lg border border-brand-border text-xs">
                                       <span className="text-[10px] text-brand-muted font-serif">{opt}:</span>
@@ -609,7 +649,7 @@ export default function App() {
                                   ))}
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2.5">
+                                <div className="flex items-center gap-2.5 justify-start sm:justify-end">
                                   <span className="text-brand-gold font-black text-sm md:text-base font-serif">{formatPrice(item.price || 0)} د.ع</span>
                                   <button 
                                     onClick={() => addToPlanner(item)}
@@ -708,6 +748,18 @@ export default function App() {
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Table Number indicator inside Drawer */}
+              <div className="px-5 py-3 bg-brand-gold/5 border-b border-brand-border flex items-center justify-between text-xs font-serif">
+                <span className="text-brand-muted">رقم طاولة الجلوس:</span>
+                {tableNumber ? (
+                  <span className="font-bold text-brand-gold bg-brand-gold/10 px-3 py-1 rounded-lg border border-brand-gold/20 text-sm">
+                    طاولة {tableNumber}
+                  </span>
+                ) : (
+                  <span className="text-brand-muted/60 italic">(لم يتم إدخال رقم الطاولة)</span>
+                )}
               </div>
 
               {/* Drawer Body - Items Planned */}
@@ -813,12 +865,13 @@ export default function App() {
                     onClick={() => {
                       if (plannerItems.length === 0) return;
                       // Generate text to copy or share with friends
-                      const txt = `💡 تخطيط وجبتي من مطعم خيرات الوارث:\n` + 
+                      const tableText = tableNumber ? ` (طاولة رقم ${tableNumber})` : "";
+                      const txt = `💡 تخطيط وجبتي من مطعم خيرات الوارث${tableText}:\n` + 
                         plannerItems.map(item => `- ${item.item.name} (${item.selectedOption}) x${item.quantity}`).join('\n') + 
                         `\n💵 المجموع المقدر: ${formatPrice(totalEstimation)} د.ع`;
                       
                       navigator.clipboard.writeText(txt);
-                      setToastMessage("تم نسخ تخطيط الوجبة لمشاركته مع العائلة والأصدقاء!");
+                      setToastMessage("تم نسخ تخطيط الوجبة مع رقم الطاولة لمشاركته!");
                       setTimeout(() => setToastMessage(null), 2000);
                     }}
                     disabled={plannerItems.length === 0}
@@ -904,7 +957,7 @@ export default function App() {
           
           <div className="flex flex-col items-center gap-2">
             <span className="text-brand-gold font-light text-xl tracking-tight font-serif">{RESTAURANT_INFO.name}</span>
-            <span className="text-[10px] text-brand-muted tracking-wider font-sans">كربلاء المقدسة - خدمةً لزوار الإمام الحسين (عليه السلام)</span>
+            <span className="text-[10px] text-brand-muted tracking-wider font-sans">كربلاء المقدسة - خدمةً لزوار الإمام الحسين</span>
           </div>
 
           <p className="max-w-md mx-auto text-brand-muted font-light px-4 leading-relaxed italic">
@@ -932,6 +985,32 @@ export default function App() {
 
         </div>
       </footer>
+
+      {/* MOBILE FLOATING CART/CALCULATOR BUTTON */}
+      <AnimatePresence>
+        {plannerItems.length > 0 && !isPlannerOpen && (
+          <motion.button
+            initial={{ scale: 0, y: 30 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0, y: 30 }}
+            onClick={() => setIsPlannerOpen(true)}
+            className="fixed bottom-6 right-6 left-6 sm:left-auto sm:right-6 z-40 md:hidden bg-brand-gold hover:bg-brand-gold/90 text-brand-bg font-sans font-bold py-3.5 px-6 rounded-full shadow-2xl flex items-center justify-between sm:justify-center gap-3 border border-brand-gold/40 cursor-pointer active:scale-95 transition-all text-sm"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <Calculator className="w-5 h-5 text-brand-bg" />
+                <span className="absolute -top-2.5 -right-2.5 bg-rose-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border border-brand-gold">
+                  {totalPlannedCount}
+                </span>
+              </div>
+              <span className="font-extrabold text-brand-bg">عرض الفاتورة التقديرية</span>
+            </div>
+            <span className="font-black bg-brand-bg/10 px-2.5 py-1 rounded-lg text-brand-bg text-xs">
+              {formatPrice(totalEstimation)} د.ع
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
     </div>
   );

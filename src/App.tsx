@@ -524,6 +524,20 @@ export default function App() {
                           <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-brand-gold/0 via-transparent to-transparent group-hover:from-brand-gold/[0.02] transition-all duration-300 pointer-events-none" />
                           
                           <div>
+                            {/* Card Image */}
+                            {item.image && (
+                              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl mb-4 bg-brand-bg border border-brand-border/60">
+                                <img 
+                                  src={item.image} 
+                                  alt={item.name}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent pointer-events-none" />
+                              </div>
+                            )}
+
                             {/* Card Header & Favorite */}
                             <div className="flex justify-between items-start mb-2 gap-2">
                               <h3 className="font-bold text-base md:text-lg text-brand-text group-hover:text-brand-gold transition-colors font-serif">
@@ -611,74 +625,89 @@ export default function App() {
                     {category.items.map(item => {
                       const isFav = favorites.includes(item.id);
                       return (
-                        <div key={item.id} className="group pb-4 border-b border-brand-border/40 last:border-0 last:pb-0">
+                        <div key={item.id} className="group pb-4 border-b border-brand-border/40 last:border-0 last:pb-0 flex gap-4 items-start">
                           
-                          {/* Row 1: Name, Dotted Leader, Price */}
-                          <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 justify-between">
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button 
-                                onClick={(e) => toggleFavorite(item.id, e)}
-                                className={`text-brand-muted hover:text-rose-400 transition-colors cursor-pointer`}
-                              >
-                                <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-rose-400 text-rose-400" : ""}`} />
-                              </button>
-                              <span className="font-bold text-brand-text group-hover:text-brand-gold transition-colors text-sm md:text-base font-serif">
-                                {item.name}
-                              </span>
+                          {/* List Item Thumbnail */}
+                          {item.image && (
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-xl overflow-hidden border border-brand-border/80 bg-brand-bg">
+                              <img 
+                                src={item.image} 
+                                alt={item.name}
+                                loading="lazy"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                referrerPolicy="no-referrer"
+                              />
                             </div>
-                            
-                            {/* Dotted spacer leader */}
-                            <div className="hidden sm:block flex-grow border-b border-dotted border-brand-border mx-2" />
-                            
-                            {/* Pricing area */}
-                            <div className="shrink-0 text-right sm:text-left font-sans mt-1 sm:mt-0">
-                              {item.prices ? (
-                                <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
-                                  {Object.entries(item.prices).map(([opt, pr]) => (
-                                    <div key={opt} className="inline-flex items-center gap-1.5 bg-brand-bg px-2 py-1 rounded-lg border border-brand-border text-xs">
-                                      <span className="text-[10px] text-brand-muted font-serif">{opt}:</span>
-                                      <span className="text-brand-gold font-extrabold">{formatPrice(pr as number)} د.ع</span>
-                                      <button 
-                                        onClick={() => addToPlanner(item, opt)}
-                                        className="p-0.5 bg-brand-gold/10 text-brand-gold rounded hover:bg-brand-gold hover:text-brand-bg transition-all cursor-pointer"
-                                        title={`إضافة ${opt} للحاسبة`}
-                                      >
-                                        <Plus className="w-3 h-3" />
-                                      </button>
-                                    </div>
+                          )}
+
+                          <div className="flex-1 min-w-0">
+                            {/* Row 1: Name, Dotted Leader, Price */}
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 justify-between">
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button 
+                                  onClick={(e) => toggleFavorite(item.id, e)}
+                                  className={`text-brand-muted hover:text-rose-400 transition-colors cursor-pointer`}
+                                >
+                                  <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-rose-400 text-rose-400" : ""}`} />
+                                </button>
+                                <span className="font-bold text-brand-text group-hover:text-brand-gold transition-colors text-sm md:text-base font-serif">
+                                  {item.name}
+                                </span>
+                              </div>
+                              
+                              {/* Dotted spacer leader */}
+                              <div className="hidden sm:block flex-grow border-b border-dotted border-brand-border mx-2" />
+                              
+                              {/* Pricing area */}
+                              <div className="shrink-0 text-right sm:text-left font-sans mt-1 sm:mt-0">
+                                {item.prices ? (
+                                  <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
+                                    {Object.entries(item.prices).map(([opt, pr]) => (
+                                      <div key={opt} className="inline-flex items-center gap-1.5 bg-brand-bg px-2 py-1 rounded-lg border border-brand-border text-xs">
+                                        <span className="text-[10px] text-brand-muted font-serif">{opt}:</span>
+                                        <span className="text-brand-gold font-extrabold">{formatPrice(pr as number)} د.ع</span>
+                                        <button 
+                                          onClick={() => addToPlanner(item, opt)}
+                                          className="p-0.5 bg-brand-gold/10 text-brand-gold rounded hover:bg-brand-gold hover:text-brand-bg transition-all cursor-pointer"
+                                          title={`إضافة ${opt} للحاسبة`}
+                                        >
+                                          <Plus className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2.5 justify-start sm:justify-end">
+                                    <span className="text-brand-gold font-black text-sm md:text-base font-serif">{formatPrice(item.price || 0)} د.ع</span>
+                                    <button 
+                                      onClick={() => addToPlanner(item)}
+                                      className="p-1 bg-brand-gold/10 hover:bg-brand-gold hover:text-brand-bg text-brand-gold rounded-lg transition-all border border-brand-gold/20 cursor-pointer"
+                                      title="إضافة للحاسبة"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Row 2: Tags & description */}
+                            <div className="flex flex-wrap justify-between items-center gap-2 mt-1.5 pr-1.5">
+                              {item.description && (
+                                <p className="text-xs text-brand-muted max-w-xl font-serif italic">
+                                  {item.description}
+                                </p>
+                              )}
+                              {item.tags && item.tags.length > 0 && (
+                                <div className="flex gap-1 font-sans">
+                                  {item.tags.map(t => (
+                                    <span key={t} className="text-[9px] font-bold bg-brand-bg text-brand-muted px-1.5 py-0.5 rounded border border-brand-border/80">
+                                      {t}
+                                    </span>
                                   ))}
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2.5 justify-start sm:justify-end">
-                                  <span className="text-brand-gold font-black text-sm md:text-base font-serif">{formatPrice(item.price || 0)} د.ع</span>
-                                  <button 
-                                    onClick={() => addToPlanner(item)}
-                                    className="p-1 bg-brand-gold/10 hover:bg-brand-gold hover:text-brand-bg text-brand-gold rounded-lg transition-all border border-brand-gold/20 cursor-pointer"
-                                    title="إضافة للحاسبة"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                  </button>
                                 </div>
                               )}
                             </div>
-                          </div>
-
-                          {/* Row 2: Tags & description */}
-                          <div className="flex flex-wrap justify-between items-center gap-2 mt-1 pr-6">
-                            {item.description && (
-                              <p className="text-xs text-brand-muted max-w-xl font-serif italic">
-                                {item.description}
-                              </p>
-                            )}
-                            {item.tags && item.tags.length > 0 && (
-                              <div className="flex gap-1 font-sans">
-                                {item.tags.map(t => (
-                                  <span key={t} className="text-[9px] font-bold bg-brand-bg text-brand-muted px-1.5 py-0.5 rounded border border-brand-border/80">
-                                    {t}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
                           </div>
 
                         </div>

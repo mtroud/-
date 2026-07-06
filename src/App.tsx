@@ -30,7 +30,13 @@ import {
   ChevronDown, 
   ChevronUp,
   Share2,
-  Heart
+  Heart,
+  Settings,
+  Lock,
+  Unlock,
+  Edit,
+  Save,
+  RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MENU_DATA, RESTAURANT_INFO, MenuItem, MenuCategory } from "./data";
@@ -42,6 +48,45 @@ const formatPrice = (num: number): string => {
 };
 
 export default function App() {
+  // Persistent Menu Data state
+  const [menuData, setMenuData] = useState<MenuCategory[]>(() => {
+    const local = localStorage.getItem("khayrat_menu_data");
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {
+        console.error("Error loading local menu", e);
+      }
+    }
+    return MENU_DATA;
+  });
+
+  // Save menuData to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem("khayrat_menu_data", JSON.stringify(menuData));
+  }, [menuData]);
+
+  // Admin Dashboard States
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [adminPassword, setAdminPassword] = useState<string>("");
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem("khayrat_admin_logged_in") === "true";
+  });
+  const [adminTab, setAdminTab] = useState<"add" | "edit" | "settings">("add");
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [resetConfirm, setResetConfirm] = useState<boolean>(false);
+
+  // Admin Form fields state
+  const [formName, setFormName] = useState<string>("");
+  const [formDescription, setFormDescription] = useState<string>("");
+  const [formPrice, setFormPrice] = useState<string>("");
+  const [formPricesStr, setFormPricesStr] = useState<string>(""); // format: "سفري: 3000, صالة: 4000"
+  const [formTagsStr, setFormTagsStr] = useState<string>(""); // format: "شعبية, تقليدي"
+  const [formImage, setFormImage] = useState<string>("");
+  const [formCategory, setFormCategory] = useState<string>("rice-soup");
+
   // State for active category
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   // Search query
@@ -76,6 +121,156 @@ export default function App() {
     localStorage.setItem("table_number", tableNumber);
   }, [tableNumber]);
 
+  // Admin Event Handlers
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminPassword === "1234") {
+      setIsAdminLoggedIn(true);
+      localStorage.setItem("khayrat_admin_logged_in", "true");
+      setAdminPassword("");
+      setLoginError(null);
+    } else {
+      setLoginError("رمز المرور خاطئ! يرجى استخدام 1234 لتجربة لوحة التحكم.");
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminLoggedIn(false);
+    localStorage.setItem("khayrat_admin_logged_in", "false");
+  };
+
+  const resetForm = () => {
+    setFormName("");
+    setFormDescription("");
+    setFormPrice("");
+    setFormPricesStr("");
+    setFormTagsStr("");
+    setFormImage("");
+    setFormCategory("rice-soup");
+    setEditingItemId(null);
+  };
+
+  const handleSaveItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formName.trim()) {
+      return;
+    }
+
+    // Parse prices
+    let parsedPrices: { [key: string]: number } | undefined = undefined;
+    if (formPricesStr.trim()) {
+      parsedPrices = {};
+      const pairs = formPricesStr.split(",");
+      pairs.forEach(pair => {
+        const parts = pair.split(":");
+        if (parts.length === 2) {
+          const opt = parts[0].trim();
+          const pr = parseInt(parts[1].trim());
+          if (opt && !isNaN(pr)) {
+            parsedPrices![opt] = pr;
+          }
+        }
+      });
+      if (Object.keys(parsedPrices).length === 0) {
+        parsedPrices = undefined;
+      }
+    }
+
+    // Parse tags
+    const parsedTags = formTagsStr.split(",").map(t => t.trim()).filter(t => t !== "");
+
+    // Prepare MenuItem
+    const targetId = editingItemId || `custom-item-${Date.now()}`;
+    const newItem: MenuItem = {
+      id: targetId,
+      name: formName.trim(),
+      description: formDescription.trim() || undefined,
+      price: formPrice.trim() ? parseInt(formPrice) : undefined,
+      prices: parsedPrices,
+      tags: parsedTags.length > 0 ? parsedTags : undefined,
+      image: formImage.trim() || undefined,
+    };
+
+    setMenuData(prev => {
+      // If editing, we remove from the previous category if it changed
+      let cleaned = prev.map(cat => {
+        return {
+          ...cat,
+          items: cat.items.filter(item => item.id !== targetId)
+        };
+      });
+
+      // Add to the selected category
+      return cleaned.map(cat => {
+        if (cat.id === formCategory) {
+          return {
+            ...cat,
+            items: [...cat.items, newItem]
+          };
+        }
+        return cat;
+      });
+    });
+
+    // Clear form
+    const wasEditing = !!editingItemId;
+    resetForm();
+    setToastMessage(wasEditing ? "تم تعديل الوجبة بنجاح!" : "تم إضافة الوجبة الجديدة للمنيو!");
+    setAdminTab("edit");
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleEditClick = (item: MenuItem, catId: string) => {
+    setEditingItemId(item.id);
+    setFormName(item.name);
+    setFormDescription(item.description || "");
+    setFormPrice(item.price ? String(item.price) : "");
+    setFormCategory(catId);
+    
+    // Convert prices object back to string representation
+    if (item.prices) {
+      const pStr = Object.entries(item.prices)
+        .map(([opt, pr]) => `${opt}: ${pr}`)
+        .join(", ");
+      setFormPricesStr(pStr);
+    } else {
+      setFormPricesStr("");
+    }
+
+    // Convert tags back to string representation
+    if (item.tags) {
+      setFormTagsStr(item.tags.join(", "));
+    } else {
+      setFormTagsStr("");
+    }
+
+    setFormImage(item.image || "");
+    setAdminTab("add"); // Switch to form tab for editing
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    setMenuData(prev => {
+      return prev.map(cat => {
+        return {
+          ...cat,
+          items: cat.items.filter(item => item.id !== itemId)
+        };
+      });
+    });
+    setDeleteConfirmId(null);
+    setToastMessage("تم حذف الوجبة بنجاح من المنيو.");
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleResetMenu = () => {
+    setMenuData(MENU_DATA);
+    localStorage.removeItem("khayrat_menu_data");
+    resetForm();
+    setResetConfirm(false);
+    setToastMessage("تم استعادة المنيو الافتراضي الأصلي.");
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
   // Get active icon component
   const getCategoryIcon = (iconName: string, className = "w-5 h-5") => {
     switch (iconName) {
@@ -94,7 +289,7 @@ export default function App() {
   // Extract all unique tags
   const allTags = useMemo(() => {
     const tagsSet = new Set<string>();
-    MENU_DATA.forEach(cat => {
+    menuData.forEach(cat => {
       cat.items.forEach(item => {
         if (item.tags) {
           item.tags.forEach(tag => tagsSet.add(tag));
@@ -102,11 +297,11 @@ export default function App() {
       });
     });
     return Array.from(tagsSet);
-  }, []);
+  }, [menuData]);
 
   // Filter items based on Category, Search query and Tags
   const filteredCategories = useMemo(() => {
-    return MENU_DATA.map(category => {
+    return menuData.map(category => {
       // If we selected a category, skip others
       if (selectedCategory !== "all" && category.id !== selectedCategory) {
         return { ...category, items: [] };
@@ -136,7 +331,7 @@ export default function App() {
         items: matchingItems
       };
     }).filter(category => category.items.length > 0);
-  }, [selectedCategory, searchInputValue, selectedTag]);
+  }, [selectedCategory, searchInputValue, selectedTag, menuData]);
 
   // Handle addition to planner
   const addToPlanner = (item: MenuItem, optionKey?: string) => {
@@ -247,10 +442,19 @@ export default function App() {
           {/* Logo emblem */}
           <div className="inline-flex items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full bg-brand-bg border-2 border-brand-gold shadow-2xl shadow-brand-gold/10 p-1 mb-4 relative group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-tr from-brand-gold/10 via-transparent to-brand-gold/10 animated-pulse" />
-            <div className="w-full h-full rounded-full border border-brand-gold/30 flex flex-col items-center justify-center bg-brand-bg">
-              <span className="text-brand-gold font-extrabold text-2xl md:text-3xl tracking-tighter">الوارث</span>
-              <span className="text-[10px] md:text-xs text-brand-muted tracking-widest font-light -mt-1">{RESTAURANT_INFO.subtitle}</span>
-            </div>
+            {RESTAURANT_INFO.logoUrl ? (
+              <img 
+                src={RESTAURANT_INFO.logoUrl} 
+                alt={RESTAURANT_INFO.name}
+                className="w-full h-full rounded-full object-cover p-1 bg-brand-bg"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full rounded-full border border-brand-gold/30 flex flex-col items-center justify-center bg-brand-bg">
+                <span className="text-brand-gold font-extrabold text-2xl md:text-3xl tracking-tighter">الوارث</span>
+                <span className="text-[10px] md:text-xs text-brand-muted tracking-widest font-light -mt-1">{RESTAURANT_INFO.subtitle}</span>
+              </div>
+            )}
             {/* Symmetrical glowing corner rings */}
             <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-brand-gold/80 animate-ping" />
           </div>
@@ -429,10 +633,10 @@ export default function App() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border shrink-0 cursor-pointer ${selectedCategory === "all" ? "bg-brand-gold text-brand-bg border-brand-gold shadow-lg shadow-brand-gold/10" : "bg-brand-bg text-brand-muted border-brand-border hover:border-brand-muted hover:text-brand-text"}`}
               >
                 <Utensils className="w-4 h-4" />
-                <span>الكل ({MENU_DATA.reduce((sum, c) => sum + c.items.length, 0)})</span>
+                <span>الكل ({menuData.reduce((sum, c) => sum + c.items.length, 0)})</span>
               </button>
 
-              {MENU_DATA.map(category => (
+              {menuData.map(category => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
@@ -1012,6 +1216,16 @@ export default function App() {
             جميع الحقوق محفوظة لمطعم خيرات الوارث © {new Date().getFullYear()}
           </p>
 
+          <div className="pt-6 flex justify-center">
+            <button 
+              onClick={() => setIsAdminOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border hover:border-brand-gold/40 text-[11px] text-brand-muted hover:text-brand-gold transition-all cursor-pointer font-sans"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>لوحة تحكم الإدارة</span>
+            </button>
+          </div>
+
         </div>
       </footer>
 
@@ -1038,6 +1252,445 @@ export default function App() {
               {formatPrice(totalEstimation)} د.ع
             </span>
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* ADMIN CONTROL PANEL MODAL */}
+      <AnimatePresence>
+        {isAdminOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#141611] border-2 border-brand-gold/40 rounded-3xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] flex flex-col font-sans"
+              onClick={(e) => e.stopPropagation()}
+            >
+              
+              {/* Modal Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-brand-border mb-4 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-brand-gold/10 text-brand-gold flex items-center justify-center border border-brand-gold/25">
+                    <Settings className="w-4 h-4 animate-spin" />
+                  </div>
+                  <div className="text-right">
+                    <h3 className="font-bold text-base text-brand-text font-serif">لوحة تحكم الإدارة</h3>
+                    <p className="text-[10px] text-brand-muted">تعديل المنيو وإضافة وجبات جديدة</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsAdminOpen(false);
+                    setLoginError(null);
+                    resetForm();
+                  }}
+                  className="p-1.5 bg-brand-bg hover:bg-brand-border/40 text-brand-muted hover:text-brand-text rounded-xl transition-all cursor-pointer border border-brand-border"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {!isAdminLoggedIn ? (
+                /* LOGIN SCREEN */
+                <form onSubmit={handleAdminLogin} className="flex-1 flex flex-col justify-center items-center py-8 space-y-6 max-w-sm mx-auto w-full">
+                  <div className="w-16 h-16 rounded-full bg-brand-gold/10 text-brand-gold flex items-center justify-center border-2 border-brand-gold/20 mb-2">
+                    <Lock className="w-8 h-8" />
+                  </div>
+                  
+                  <div className="text-center">
+                    <h4 className="font-bold text-base text-brand-text">تسجيل الدخول كمسؤول</h4>
+                    <p className="text-xs text-brand-muted mt-1 leading-relaxed">
+                      يرجى إدخال رمز المرور لتتمكن من إضافة وجبات جديدة أو تعديل الأسعار والصور.
+                    </p>
+                  </div>
+
+                  <div className="w-full space-y-2">
+                    <input 
+                      type="password" 
+                      placeholder="رمز المرور (الافتراضي: 1234)"
+                      value={adminPassword}
+                      onChange={(e) => {
+                        setAdminPassword(e.target.value);
+                        setLoginError(null);
+                      }}
+                      className="w-full bg-brand-bg text-brand-text text-center px-4 py-3 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/50 text-base transition-all placeholder:text-brand-muted/40 font-mono tracking-widest"
+                      required
+                    />
+                    {loginError && (
+                      <p className="text-xs text-rose-400 text-center font-serif mt-1 animate-pulse">
+                        ⚠️ {loginError}
+                      </p>
+                    )}
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-bg font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-brand-gold/10 cursor-pointer"
+                  >
+                    تسجيل الدخول
+                  </button>
+
+                  <div className="text-center pt-2">
+                    <span className="text-[10px] text-brand-muted bg-brand-bg px-3 py-1.5 rounded-full border border-brand-border">
+                      💡 رمز التجريب السريع للمالك هو: <strong className="font-mono text-brand-gold">1234</strong>
+                    </span>
+                  </div>
+                </form>
+              ) : (
+                /* LOGGED IN VIEW */
+                <div className="flex-1 overflow-y-auto flex flex-col">
+                  
+                  {/* Logged in Header Info / Tabs */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-brand-bg p-3 rounded-2xl border border-brand-border mb-5 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Unlock className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-brand-text">أهلاً بك، المدير المسؤول</span>
+                    </div>
+                    
+                    <div className="flex gap-1.5 font-sans text-xs">
+                      <button 
+                        onClick={() => setAdminTab("add")}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${adminTab === "add" ? "bg-brand-gold text-brand-bg" : "hover:bg-brand-border text-brand-muted"}`}
+                      >
+                        {editingItemId ? "تعديل الوجبة" : "إضافة وجبة"}
+                      </button>
+                      <button 
+                        onClick={() => setAdminTab("edit")}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${adminTab === "edit" ? "bg-brand-gold text-brand-bg" : "hover:bg-brand-border text-brand-muted"}`}
+                      >
+                        إدارة وجبات المنيو
+                      </button>
+                      <button 
+                        onClick={() => setAdminTab("settings")}
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${adminTab === "settings" ? "bg-brand-gold text-brand-bg" : "hover:bg-brand-border text-brand-muted"}`}
+                      >
+                        إعدادات عامة
+                      </button>
+                    </div>
+
+                    <button 
+                      onClick={handleAdminLogout}
+                      className="text-xs text-rose-400 hover:bg-rose-500/10 px-2.5 py-1 rounded-lg border border-transparent hover:border-rose-500/10 transition-all cursor-pointer shrink-0"
+                    >
+                      خروج
+                    </button>
+                  </div>
+
+                  {/* Tab Contents */}
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                    {adminTab === "add" && (
+                      /* ADD / EDIT DISH FORM */
+                      <form onSubmit={handleSaveItem} className="space-y-4 pb-4">
+                        <h4 className="text-sm font-bold text-brand-gold pb-2 border-b border-brand-border/40 font-serif text-right">
+                          {editingItemId ? "✍️ تعديل بيانات الوجبة الحالية" : "➕ إضافة وجبة طعام جديدة للمنيو"}
+                        </h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+                          {/* Name */}
+                          <div className="space-y-1">
+                            <label className="text-xs text-brand-muted font-bold block">اسم الوجبة (عربي) *</label>
+                            <input 
+                              type="text" 
+                              value={formName}
+                              onChange={(e) => setFormName(e.target.value)}
+                              placeholder="مثال: كباب عراقي فاخر"
+                              className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all text-right"
+                              required
+                            />
+                          </div>
+
+                          {/* Category */}
+                          <div className="space-y-1">
+                            <label className="text-xs text-brand-muted font-bold block">التصنيف الرئيسي *</label>
+                            <select 
+                              value={formCategory}
+                              onChange={(e) => setFormCategory(e.target.value)}
+                              className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all cursor-pointer text-right"
+                            >
+                              {menuData.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-1 text-right">
+                          <label className="text-xs text-brand-muted font-bold block">الوصف أو المكونات</label>
+                          <textarea 
+                            value={formDescription}
+                            onChange={(e) => setFormDescription(e.target.value)}
+                            placeholder="مثال: يقدم مع الخبز الحار، البصل الطازج، الطماطم المشوية والريحان"
+                            className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all h-20 text-right"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+                          {/* Simple Price */}
+                          <div className="space-y-1">
+                            <label className="text-xs text-brand-muted font-bold block">السعر البسيط (د.ع)</label>
+                            <input 
+                              type="number" 
+                              value={formPrice}
+                              onChange={(e) => setFormPrice(e.target.value)}
+                              placeholder="مثال: 8000"
+                              className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all text-right"
+                            />
+                            <p className="text-[10px] text-brand-muted italic">يُترك فارغاً إذا كان للوجبة أسعار متعددة أدناه.</p>
+                          </div>
+
+                          {/* Complex Prices (Multiple Options) */}
+                          <div className="space-y-1">
+                            <label className="text-xs text-brand-muted font-bold block">أسعار متعددة (اختياري)</label>
+                            <input 
+                              type="text" 
+                              value={formPricesStr}
+                              onChange={(e) => setFormPricesStr(e.target.value)}
+                              placeholder="مثال: سفري: 5000, صالة: 6000"
+                              className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all text-right"
+                            />
+                            <p className="text-[10px] text-brand-muted italic">الصيغة: الخيار: السعر، مفصولة بفاصلة.</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+                          {/* Image URL */}
+                          <div className="space-y-1">
+                            <label className="text-xs text-brand-muted font-bold block">رابط صورة الوجبة (URL)</label>
+                            <input 
+                              type="text" 
+                              value={formImage}
+                              onChange={(e) => setFormImage(e.target.value)}
+                              placeholder="رابط الصورة من unsplash أو imgix..."
+                              className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all text-left"
+                            />
+                            <p className="text-[10px] text-brand-muted">أدخل رابط صورة عالي الجودة لعرضها للزبائن.</p>
+                          </div>
+
+                          {/* Tags */}
+                          <div className="space-y-1">
+                            <label className="text-xs text-brand-muted font-bold block">الوسوم/العلامات (مفصولة بفاصلة)</label>
+                            <input 
+                              type="text" 
+                              value={formTagsStr}
+                              onChange={(e) => setFormTagsStr(e.target.value)}
+                              placeholder="مثال: عراقي أصيل, مميز, حار"
+                              className="w-full bg-brand-bg text-brand-text px-3 py-2 rounded-xl border border-brand-border focus:border-brand-gold/50 focus:outline-none text-sm transition-all text-right"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Image Preview */}
+                        {formImage.trim() && (
+                          <div className="bg-brand-bg p-3 rounded-2xl border border-brand-border flex items-center justify-between gap-3 text-right">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={formImage.trim()} 
+                                alt="معاينة" 
+                                className="w-16 h-16 rounded-xl object-cover border border-brand-border shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&auto=format&fit=crop";
+                                }}
+                                referrerPolicy="no-referrer"
+                              />
+                              <div>
+                                <span className="text-xs font-bold text-emerald-400 block">✓ تمت قراءة الصورة بنجاح</span>
+                                <span className="text-[10px] text-brand-muted">ستظهر هذه الصورة للزبائن كغلاف شهي للوجبة.</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Submit Row */}
+                        <div className="flex gap-2.5 pt-4 border-t border-brand-border/40">
+                          <button 
+                            type="submit"
+                            className="flex-1 bg-brand-gold hover:bg-brand-gold/90 text-brand-bg font-bold py-2.5 rounded-xl text-sm transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 font-sans"
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>{editingItemId ? "تحديث الوجبة الحالية" : "إضافة وجبة طعام جديدة"}</span>
+                          </button>
+                          
+                          {editingItemId && (
+                            <button 
+                              type="button"
+                              onClick={resetForm}
+                              className="px-5 bg-brand-bg hover:bg-brand-border/50 text-brand-text font-bold py-2.5 rounded-xl text-sm border border-brand-border transition-all cursor-pointer font-sans"
+                            >
+                              إلغاء التعديل
+                            </button>
+                          )}
+                        </div>
+
+                      </form>
+                    )}
+
+                    {adminTab === "edit" && (
+                      /* MANAGE EXISTING ITEMS LIST */
+                      <div className="space-y-6 pb-4 text-right">
+                        <h4 className="text-sm font-bold text-brand-gold pb-2 border-b border-brand-border/40 font-serif">
+                          📋 الوجبات المتوفرة حالياً في المنيو ({menuData.reduce((sum, c) => sum + c.items.length, 0)} وجبة)
+                        </h4>
+
+                        {menuData.map(cat => (
+                          <div key={cat.id} className="bg-brand-bg p-3.5 rounded-2xl border border-brand-border space-y-3">
+                            <div className="flex justify-between items-center border-b border-brand-border/50 pb-2">
+                              <span className="text-xs font-bold text-brand-gold font-serif flex items-center gap-1.5">
+                                {getCategoryIcon(cat.iconName, "w-3.5 h-3.5")}
+                                {cat.name}
+                              </span>
+                              <span className="text-[10px] bg-brand-card text-brand-muted px-2 py-0.5 rounded-md border border-brand-border font-sans">
+                                {cat.items.length} أطباق
+                              </span>
+                            </div>
+
+                            <div className="space-y-2">
+                              {cat.items.length === 0 ? (
+                                <p className="text-xs text-brand-muted italic text-center py-2">لا توجد أطباق في هذا التصنيف حالياً.</p>
+                              ) : (
+                                cat.items.map(item => (
+                                  <div key={item.id} className="flex items-center justify-between gap-4 p-2 rounded-xl hover:bg-brand-card/40 transition-colors border border-transparent hover:border-brand-border/30">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      {item.image && (
+                                        <img 
+                                          src={item.image} 
+                                          alt={item.name} 
+                                          className="w-10 h-10 rounded-lg object-cover border border-brand-border shrink-0"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      )}
+                                      <div className="min-w-0 text-right">
+                                        <span className="text-xs font-bold text-brand-text block truncate font-serif">{item.name}</span>
+                                        <span className="text-[10px] text-brand-gold font-sans">
+                                          {item.prices ? (
+                                            Object.entries(item.prices).map(([o, p]) => `${o}: ${formatPrice(p as number)}`).join(" | ")
+                                          ) : (
+                                            `${formatPrice(item.price || 0)} د.ع`
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button 
+                                        type="button"
+                                        onClick={() => handleEditClick(item, cat.id)}
+                                        className="p-1.5 bg-brand-bg hover:bg-brand-gold/10 text-brand-muted hover:text-brand-gold rounded-lg border border-brand-border hover:border-brand-gold/20 transition-all cursor-pointer"
+                                        title="تعديل الوجبة"
+                                      >
+                                        <Edit className="w-3.5 h-3.5" />
+                                      </button>
+                                      
+                                      {deleteConfirmId === item.id ? (
+                                        <div className="flex items-center gap-1 font-sans">
+                                          <button 
+                                            type="button"
+                                            onClick={() => handleDeleteItem(item.id)}
+                                            className="px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white font-bold text-[10px] rounded-lg transition-all cursor-pointer"
+                                          >
+                                            تأكيد
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setDeleteConfirmId(null)}
+                                            className="px-2 py-1 bg-brand-bg hover:bg-brand-border text-brand-text text-[10px] rounded-lg border border-brand-border transition-all cursor-pointer"
+                                          >
+                                            إلغاء
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button 
+                                          type="button"
+                                          onClick={() => setDeleteConfirmId(item.id)}
+                                          className="p-1.5 bg-brand-bg hover:bg-rose-500/10 text-brand-muted hover:text-rose-400 rounded-lg border border-brand-border hover:border-rose-500/20 transition-all cursor-pointer"
+                                          title="حذف الوجبة"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {adminTab === "settings" && (
+                      /* MENU SETTINGS / MAINTENANCE */
+                      <div className="space-y-6 pb-4 font-serif text-right">
+                        <h4 className="text-sm font-bold text-brand-gold pb-2 border-b border-brand-border/40">
+                          ⚙️ صيانة المنيو والإعدادات العامة
+                        </h4>
+
+                        <div className="bg-brand-bg p-4 rounded-2xl border border-brand-border space-y-4">
+                          <h5 className="text-xs font-bold text-brand-text">⚠️ منطقة الخطر</h5>
+                          <p className="text-xs text-brand-muted leading-relaxed">
+                            إذا قمت بعمل تغييرات غير صحيحة، أو قمت بحذف عناصر بالخطأ، يمكنك مسح الذاكرة المحلية واستعادة المنيو الافتراضي الأصلي لمطعم خيرات الوارث فوراً.
+                          </p>
+
+                          {resetConfirm ? (
+                            <div className="p-3.5 bg-rose-950/20 border border-rose-500/30 rounded-2xl space-y-3">
+                              <span className="text-xs font-bold text-rose-300 block">⚠️ هل أنت متأكد تماماً من رغبتك بالمسح والاستعادة؟</span>
+                              <p className="text-[10px] text-rose-400 leading-normal">سيؤدي هذا إلى حذف جميع الوجبات التي أضفتها والتغييرات التي أجريتها نهائياً!</p>
+                              
+                              <div className="flex gap-2 font-sans">
+                                <button 
+                                  onClick={handleResetMenu}
+                                  className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                                >
+                                  نعم، استعد المنيو الأصلي
+                                </button>
+                                <button 
+                                  onClick={() => setResetConfirm(false)}
+                                  className="px-4 py-2 bg-brand-bg hover:bg-brand-card text-brand-text font-bold text-xs rounded-xl border border-brand-border transition-all cursor-pointer"
+                                >
+                                  إلغاء وتراجع
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => setResetConfirm(true)}
+                              className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 font-sans font-bold py-2.5 rounded-xl text-xs transition-all border border-rose-500/25 flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>استعادة وإرجاع المنيو الافتراضي الأصلي</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="bg-brand-bg p-4 rounded-2xl border border-brand-border space-y-3 font-sans">
+                          <h5 className="text-xs font-bold text-brand-text text-right">📊 معلومات وقراءة المنيو</h5>
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-3 bg-brand-card rounded-xl border border-brand-border text-right">
+                              <span className="text-[10px] text-brand-muted block">عدد التصنيفات</span>
+                              <span className="text-lg font-bold text-brand-gold">{menuData.length} تصنيفات</span>
+                            </div>
+                            <div className="p-3 bg-brand-card rounded-xl border border-brand-border text-right">
+                              <span className="text-[10px] text-brand-muted block">إجمالي أطباق الطعام</span>
+                              <span className="text-lg font-bold text-brand-gold">{menuData.reduce((sum, c) => sum + c.items.length, 0)} وجبة</span>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

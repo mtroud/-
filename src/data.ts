@@ -25,6 +25,7 @@ export const RESTAURANT_INFO = {
   workingHours: "من الساعة 11:00 صباحاً إلى 10:00 ليلاً",
   location: "العراق، كربلاء المقدسة",
   phone: "07800000000", // placeholder or general
+  logoUrl: "https://6a4b5f161e75414caa998115.imgix.net/sandbox/%D9%84%D9%88%D8%BA%D9%88%20%D9%85%D8%B7%D8%B9%D9%85%20%D8%A8%D9%8A%20%D8%A7%D9%86%20%D8%AC%D9%8A.png",
 };
 
 export const MENU_DATA: MenuCategory[] = [
@@ -39,7 +40,7 @@ export const MENU_DATA: MenuCategory[] = [
         description: "أرز عراقي فاخر يقدم مع المرق اليومي الطازج",
         price: 4000,
         tags: ["شعبية", "تقليدي"],
-        image: "https://6a4b5f161e75414caa998115.imgix.net/sandbox/%D9%84%D9%88%D8%BA%D9%88%20%D9%85%D8%B7%D8%B9%D9%85%20%D8%A8%D9%8A%20%D8%A7%D9%86%20%D8%AC%D9%8A.png"
+        image: "https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "rice-soup-2",

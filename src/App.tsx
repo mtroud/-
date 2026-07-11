@@ -53,7 +53,25 @@ export default function App() {
     const local = localStorage.getItem("khayrat_menu_data");
     if (local) {
       try {
-        return JSON.parse(local);
+        const parsed: MenuCategory[] = JSON.parse(local);
+        // Automatically upgrade default items' placeholder images to our high-quality generated images
+        return parsed.map(cat => {
+          const defaultCat = MENU_DATA.find(dc => dc.id === cat.id);
+          if (!defaultCat) return cat;
+          return {
+            ...cat,
+            items: cat.items.map(item => {
+              const defaultItem = defaultCat.items.find(di => di.id === item.id);
+              if (defaultItem && defaultItem.image && item.image !== defaultItem.image) {
+                // If it's a default item and has an old Unsplash placeholder, upgrade it to the new generated asset image
+                if (item.image?.includes("unsplash.com") && defaultItem.image.startsWith("/src/assets/images/")) {
+                  return { ...item, image: defaultItem.image };
+                }
+              }
+              return item;
+            })
+          };
+        });
       } catch (e) {
         console.error("Error loading local menu", e);
       }

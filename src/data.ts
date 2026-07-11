@@ -40,7 +40,7 @@ export const MENU_DATA: MenuCategory[] = [
         description: "أرز عراقي فاخر يقدم مع المرق اليومي الطازج",
         price: 4000,
         tags: ["شعبية", "تقليدي"],
-        image: "https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=600&auto=format&fit=crop"
+        image: "/src/assets/images/iraqi_rice_and_stew_1783747553895.jpg"
       },
       {
         id: "rice-soup-2",
@@ -56,7 +56,7 @@ export const MENU_DATA: MenuCategory[] = [
         description: "لحم الغنم الطازج المطبوخ ببطء مع خبز الرقاق العراقي والتشريب",
         price: 15000,
         tags: ["عراقي أصيل", "دسم"],
-        image: "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=600&auto=format&fit=crop"
+        image: "/src/assets/images/iraqi_tashreeb_laham_1783747538404.jpg"
       },
       {
         id: "rice-soup-4",
@@ -64,7 +64,7 @@ export const MENU_DATA: MenuCategory[] = [
         description: "كباب لحم عراقي مشوي على الفحم يقدم مع الأرز البسمتي بالزعفران",
         price: 9000,
         tags: ["مشويات", "كلاسيك"],
-        image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop"
+        image: "/src/assets/images/iraqi_jelo_kabab_laham_1783747568839.jpg"
       },
       {
         id: "rice-soup-5",
@@ -87,7 +87,7 @@ export const MENU_DATA: MenuCategory[] = [
         description: "فخذ لحم الغنم الطري المطبوخ ببطء لدرجة الذوبان، يقدم فوق جبل من الأرز المزين بالمكسرات والشعرية والزبيب مع المرق",
         price: 20000,
         tags: ["فاخر", "ولائم"],
-        image: "https://images.unsplash.com/photo-1608897013039-887f21d8c804?q=80&w=600&auto=format&fit=crop"
+        image: "/src/assets/images/iraqi_quzi_on_rice_1783747521981.jpg"
       },
       {
         id: "quzi-2",
@@ -103,7 +103,7 @@ export const MENU_DATA: MenuCategory[] = [
         description: "نصف دجاجة محمرة طرية تقدم مع الأرز البسمتي والمرق الساخن",
         price: 8000,
         tags: ["شعبية"],
-        image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?q=80&w=600&auto=format&fit=crop"
+        image: "/src/assets/images/iraqi_chicken_rice_1783747583516.jpg"
       }
     ]
   },
